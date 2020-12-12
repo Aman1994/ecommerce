@@ -1,6 +1,7 @@
 (ns ecommerce.products
   (:require [cheshire.core :as jq]
-            [clojure.string :refer [split]]
+            [clojure.string :refer [split
+                                    ends-with?]]
             [ecommerce.utils :refer :all]))
 
 (defn prUrl-pr-opr-skus
@@ -31,15 +32,15 @@
        (jq/generate-string)))
 
 (defn find-image
-  "Find all the image keys from the input"
+  "Find all the image keys values from the json content"
   [input]
-  (let [images1      (mapv #(last (split (% :image) #"/")) (input :listItems))
-        items-images (mapv #(last (split (% :image) #"/"))
-                           (get-in input [:brandBar :items]))
-        thumbs       (flatten (mapv #(% :thumbs) (input :listItems)))
-        thumb-images (mapv #(last (split (% :image) #"/")) thumbs)
-        final-images (distinct (concat images1 items-images thumb-images))]
-    (cons ["filename"] (mapv #(vector %) final-images))))
+  (let [flattened-output (flatten-json nil "_"
+                                       (make-map (if (vector? input)
+                                                   (zipmap (range) input)
+                                                   input)))
+        filter-image-keys (filter (fn [[k v]] (ends-with? k ":image")) flattened-output)
+        image-vals (distinct (mapv #(vector (last (split (second %) #"/"))) filter-image-keys))]
+    (cons ["filename"] image-vals)))
 
 (defn find-products
   "Find the max products which can be bought with the given amount"
